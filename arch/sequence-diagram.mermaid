@@ -1,0 +1,26 @@
+sequenceDiagram
+    participant K8s as Kubernetes CronJob
+    participant Container as Docker Container
+    participant AWS as AWS Spot Advisor
+    participant CASTAI as CAST.ai API
+    
+    Note over K8s: Scheduled trigger (e.g., every 6 hours)
+    K8s->>Container: Start container with environment variables
+    
+    Note over Container: spot_blacklist.py execution begins
+    Container->>AWS: Request Spot Advisor data
+    AWS-->>Container: Return instance type interruption rates
+    
+    Note over Container: Filter instances by region (e.g., us-east-1)<br/>Filter by OS (e.g., Linux)<br/>Filter by interruption rate (e.g., >10%)
+    
+    Container->>Container: Sort instances by interruption rate (highest first)
+    
+    loop For each high-risk instance
+        Container->>CASTAI: Blacklist instance API call
+        CASTAI-->>Container: Confirm blacklist status
+        Note over Container: Pause between batches
+    end
+    
+    Container-->>K8s: Return execution status
+    
+    Note over K8s: Job complete, wait for next schedule

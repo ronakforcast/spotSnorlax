@@ -1,0 +1,50 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: spot-blacklist-cronjob
+  namespace: cast-ai  # Change to your desired namespace
+spec:
+  schedule: "0 */6 * * *"  # Run every 6 hours - adjust as needed
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          containers:
+          - name: spot-blacklist
+            image: your-registry/spot-blacklist:latest  # Update with your registry and image name
+            imagePullPolicy: Always
+            env:
+            - name: REGION
+              value: "us-east-1"  # Replace with your region
+            - name: OS
+              value: "Linux"      # Replace with your OS
+            - name: INTERRUPTION_THRESHOLD
+              value: "10"         # Replace with your threshold
+            - name: BLACKLIST_HOURS
+              value: "5"
+            - name: AUTO_APPROVE
+              value: "true"
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cast-ai-credentials
+                  key: api-key
+            - name: ORG_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cast-ai-credentials
+                  key: org-id
+            - name: CLUSTER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cast-ai-credentials
+                  key: cluster-id
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000

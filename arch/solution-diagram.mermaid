@@ -1,0 +1,30 @@
+flowchart TB
+    subgraph Kubernetes["Kubernetes Cluster"]
+        CronJob["CronJob\n(Scheduled Task)"] --> Pod["Pod\n(Container Instance)"]
+        Secret["Secret\n(API Credentials)"] -.-> Pod
+    end
+
+    subgraph Container["Container"]
+        Python["Python Script\nspot_blacklist.py"] --> FetchData["Fetch Spot Advisor Data"]
+        FetchData --> FilterData["Filter by Region, OS\nand Interruption Rate"]
+        FilterData --> BlacklistAPI["Blacklist High-Risk\nInstance Types"]
+    end
+
+    subgraph External["External Services"]
+        AWS["AWS Spot Advisor\nData"] 
+        CASTAI["CAST.ai API"]
+    end
+    
+    Pod --> Container
+    FetchData --> AWS
+    BlacklistAPI --> CASTAI
+
+    classDef k8s fill:#326ce5,color:white;
+    classDef container fill:#4285F4,color:white;
+    classDef aws fill:#FF9900,color:black;
+    classDef castai fill:#00ACC1,color:white;
+    
+    class CronJob,Pod,Secret k8s;
+    class Python,FetchData,FilterData,BlacklistAPI container;
+    class AWS aws;
+    class CASTAI castai;

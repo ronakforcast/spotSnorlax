@@ -1,0 +1,41 @@
+flowchart LR
+    subgraph Development
+        Script["spot_blacklist.py"]
+        DockerFile["Dockerfile"]
+        ReqFile["requirements.txt"]
+        K8sManifests["Kubernetes Manifests<br/>(CronJob, Secret)"]
+    end
+
+    subgraph Build["Build Process"]
+        DockerBuild["Docker Build"]
+        DockerTag["Tag Image"]
+        DockerPush["Push to Registry"]
+    end
+
+    subgraph Deployment
+        ApplySecret["Apply Secret<br/>(with Credentials)"]
+        ApplyCronJob["Apply CronJob"]
+        K8sExecution["Kubernetes<br/>Scheduled Execution"]
+    end
+
+    Script --> DockerBuild
+    DockerFile --> DockerBuild
+    ReqFile --> DockerBuild
+    
+    DockerBuild --> DockerTag
+    DockerTag --> DockerPush
+    
+    DockerPush --> ApplyCronJob
+    K8sManifests --> ApplySecret
+    K8sManifests --> ApplyCronJob
+    
+    ApplySecret --> K8sExecution
+    ApplyCronJob --> K8sExecution
+    
+    classDef dev fill:#4CAF50,color:white;
+    classDef build fill:#FF5722,color:white;
+    classDef deploy fill:#3F51B5,color:white;
+    
+    class Script,DockerFile,ReqFile,K8sManifests dev;
+    class DockerBuild,DockerTag,DockerPush build;
+    class ApplySecret,ApplyCronJob,K8sExecution deploy;
