@@ -7,11 +7,13 @@ instance families with lower interruption rates.
 
 Usage:
   python cast_node_template_updater.py --region REGION --os OS --api-key API_KEY --cluster-id CLUSTER_ID
+                                      [--template-names TEMPLATE1,TEMPLATE2]
                                       [--dry-run] [--cache-dir CACHE_DIR]
 
 Example:
   python cast_node_template_updater.py --region us-east-1 --os Linux 
                                       --api-key YOUR_API_KEY --cluster-id YOUR_CLUSTER_ID
+                                      --template-names template1,template2
 """
 
 import argparse
@@ -58,6 +60,10 @@ def parse_args():
         "--cluster-id",
         required=True,
         help="CAST.ai cluster ID"
+    )
+    parser.add_argument(
+        "--template-names",
+        help="Comma-separated list of template names to update (if not specified, all spot templates will be updated)"
     )
     parser.add_argument(
         "--dry-run",
@@ -331,6 +337,12 @@ def main():
     logger.info(f"Starting CAST.ai Node Template Spot Priority Updater")
     logger.info(f"Region: {args.region}, OS: {args.os}, Cluster ID: {args.cluster_id}")
     
+    # Parse template names list if provided
+    template_names_to_update = []
+    if args.template_names:
+        template_names_to_update = [name.strip() for name in args.template_names.split(',')]
+        logger.info(f"Filtering updates to template names: {', '.join(template_names_to_update)}")
+    
     if args.dry_run:
         logger.info("DRY RUN MODE: No templates will actually be updated")
     
@@ -384,13 +396,20 @@ def main():
     # Track success/failure counts
     updated = 0
     skipped = 0
+    skipped_not_in_list = 0
     failed = 0
     
-    # Update each template that has spot: true
+    # Update each template that has spot: true and matches the name filter if provided
     for template_item in templates:
         template = template_item.get("template", {})
         template_name = template.get("name", "")
         constraints = template.get("constraints", {})
+        
+        # Check if this template should be updated based on the name filter
+        if template_names_to_update and template_name not in template_names_to_update:
+            logger.info(f"Skipping template '{template_name}' as it's not in the provided template names list")
+            skipped_not_in_list += 1
+            continue
         
         # Check if this template uses spot instances
         if constraints.get("spot", False):
@@ -419,6 +438,8 @@ def main():
     logger.info(f"Total templates: {len(templates)}")
     logger.info(f"Updated: {updated}")
     logger.info(f"Skipped (no spot): {skipped}")
+    if template_names_to_update:
+        logger.info(f"Skipped (not in template names list): {skipped_not_in_list}")
     logger.info(f"Failed: {failed}")
     
     # Save results to a file
